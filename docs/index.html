@@ -81,6 +81,24 @@
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,1px,1px); white-space: nowrap; border: 0; }
 
     .notice { padding: 12px 16px; font-size: 13px; color: var(--muted); border-top: 1px dashed rgba(255,255,255,0.12); }
+      /* Themed selects (dropdowns) to match inputs/buttons */
+    select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      width: 100%; font-size: 16px; padding: 12px 42px 12px 14px; border-radius: 12px; outline: none;
+      border: 1px solid rgba(255,255,255,0.12); background: #0f131b; color: var(--text);
+      transition: border-color .2s, box-shadow .2s, filter .15s;
+      background-image: url("data:image/svg+xml;utf8,<?xml version='1.0' encoding='UTF-8'?>\<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8ecf1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>\<polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px;
+    }
+    select:hover { filter: brightness(1.05); }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 6px var(--ring); }
+    select:disabled { opacity: .6; cursor: not-allowed; }
+    select:invalid { color: var(--muted); }
+    option[disabled] { color: var(--muted); }
+    /* Ensure controls line up nicely in grid rows */
+    .row { align-items: center; }
+    /* Firefox padding tweak */
+    @supports (-moz-appearance: none) { select { padding-right: 36px; } }
   </style>
 </head>
 <body>
@@ -102,9 +120,9 @@
       - inviteAlt: alt text for accessibility
     -->
 
-    <form id="qa-form"
+    <form id="qa-form" novalidate
           data-require-correct="true"
-          data-invite-src="img/invitation.pdf"
+          data-invite-src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1600&auto=format&fit=crop"
           data-invite-alt="Event invite">
 
       <label for="questionSelect">Choose one question to answer</label>
@@ -117,7 +135,7 @@
         <button id="submitBtn" type="submit" disabled>Submit</button>
       </div>
 
-      <div id="hint" class="hint">Pick a question from the dropdown, answer it, and the easter egg will appear.</div>
+      <div id="hint" class="hint">Pick a question from the dropdown, answer it, and the invite will appear.</div>
       <div id="err" class="err" role="alert" aria-live="polite"></div>
     </form>
 
@@ -128,27 +146,25 @@
           <img id="inviteImg" src="" alt="" loading="lazy" width="1280" height="720" />
         </div>
       </div>
+      <div class="notice">Pro tip: Right‑click → “Save Image As…” to keep a copy, or replace the image URL in the HTML with your own invite graphic.</div>
     </section>
 
     <div class="footer">
       <button type="button" class="link-btn" id="resetBtn" aria-label="Reset and answer again">Reset</button>
+      <button type="button" class="link-btn" id="copyLinkBtn" aria-label="Copy invite image link">Copy invite link</button>
     </div>
   </main>
 
   <script>
     (function () {
-      // ===== Configurable questions =====
-      // type: 'text' (free text) or 'select' (dropdown answers)
-      // acceptedAnswers: [] means any non-empty answer is accepted
-      // For 'select', define options: ['A','B','C'] and (optionally) acceptedAnswers to restrict correct ones
+      // ===== Kian-specific questions =====
       const QUESTIONS = [
-        { id: 'q1', label: 'What is Kian\'s real name (First name)?', type: 'text', acceptedAnswers: ['Jiankun'] },
-        { id: 'q3', label: 'Who is Kian\'s PI?', type: 'select', type: 'text', acceptedAnswers: ['Venkat','Venkat Viswanathan','Prof. Venkat Viswanathan'] },
-        { id: 'q2', label: 'What sports has Kian been playing for the last 6 months?', type: 'text', acceptedAnswers: ['Soccer','soccer','SOCCCER'] },
-        { id: 'q4', label: 'What is Kian\'s go-to phrase?', type: 'text', acceptedAnswers: ['Let\'s go','LET\'S GO','Letgo','Let\'s Go'] },
-        { id: 'q5', label: 'What is Kian\'s favorite type of beer?', type: 'select', options: ['IPA','Stout','Lager','Pilsner','Wheat Beer'], acceptedAnswers: ['Lager'] },
-        { id: 'q6', label: 'What is Kian\'s favorite food?', type: 'select', options: ['Burger','Mapo Tofu','Pad Thai','Pho','Pasta'], acceptedAnswers: ['Burger'] },
-
+        { id: 'q1', label: "What is Kian's real name (First name)?", type: 'text', acceptedAnswers: ['Jiankun'] },
+        { id: 'q3', label: "Who is Kian's PI?", type: 'text', acceptedAnswers: ['Venkat','Venkat Viswanathan','Prof. Venkat Viswanathan','Professor Venkat Viswanathan','Prof Venkat Viswanathan','Venkat S. Viswanathan'] },
+        { id: 'q2', label: 'What sports has Kian been playing for the last 6 months?', type: 'text', acceptedAnswers: ['Soccer','Football','Futbol','Socer','Soocer','Socccer'] },
+        { id: 'q4', label: "What is Kian's go-to phrase?", type: 'text', acceptedAnswers: ["Let's go","Lets go","Letgo","lets go","LETS GO","LET'S GO"] },
+        { id: 'q5', label: "What is Kian's favorite type of beer?", type: 'select', options: ['IPA','Stout','Lager','Pilsner','Wheat Beer'], acceptedAnswers: ['Lager'] },
+        { id: 'q6', label: "What is Kian's favorite food?", type: 'select', options: ['Burger','Mapo Tofu','Pad Thai','Pho','Pasta'], acceptedAnswers: ['Burger'] }
       ];
 
       const form = document.getElementById('qa-form');
@@ -166,11 +182,24 @@
       const img = document.getElementById('inviteImg');
       const resetBtn = document.getElementById('resetBtn');
       const copyBtn = document.getElementById('copyLinkBtn');
+      const content = document.querySelector('.reveal .content');
 
-      // Runtime state
-      let currentAnswerEl = textInput; // can be input or a generated select
+      // Normalize answers (case-insensitive, ignore apostrophes)
+      function norm(s) {
+        let t = String(s);
+        try { t = t.normalize('NFKD'); } catch(e) {}
+        t = t.split("'").join("").split("’").join("").split("`").join("");
+        t = t.trim().toLowerCase();
+        return t;
+      }
 
-      // Populate question dropdown
+      function isPDF(url) {
+        const u = (url || '').split('#')[0].split('?')[0].toLowerCase();
+        return u.endsWith('.pdf');
+      }
+
+      let currentAnswerEl = textInput; // active input control
+
       function populateQuestions() {
         questionSelect.innerHTML = '';
         QUESTIONS.forEach((q, idx) => {
@@ -184,39 +213,41 @@
       }
 
       function clearAnswerField() {
-        if (currentAnswerEl && currentAnswerEl !== textInput) {
-          // remove any injected select
-          currentAnswerEl.remove();
-          currentAnswerEl = textInput;
-        }
+        const sel = document.getElementById('answerSelect');
+        if (sel) sel.remove();
+        currentAnswerEl = textInput;
         textInput.value = '';
+        textInput.disabled = false;
+        textInput.required = true;
         submitBtn.disabled = true;
       }
 
       function renderAnswerField(q) {
         clearAnswerField();
         err.textContent = '';
-        textInput.setAttribute('aria-invalid', 'false');
+        if (currentAnswerEl) currentAnswerEl.setAttribute('aria-invalid', 'false');
 
         if (q.type === 'select') {
-          // Create/select element with options
           const sel = document.createElement('select');
           sel.id = 'answerSelect';
           sel.setAttribute('aria-describedby', 'hint');
           sel.required = true;
-          // Placeholder option
+          textInput.required = false;
+          textInput.disabled = true;
+
           const ph = document.createElement('option');
           ph.value = '';
           ph.textContent = 'Choose an option…';
           ph.disabled = true; ph.selected = true;
           sel.appendChild(ph);
+
           (q.options || []).forEach(o => {
             const opt = document.createElement('option');
             opt.value = String(o);
             opt.textContent = String(o);
             sel.appendChild(opt);
           });
-          // Swap into the UI (replace text input)
+
           answerWrap.insertBefore(sel, submitBtn);
           textInput.style.display = 'none';
           currentAnswerEl = sel;
@@ -225,17 +256,22 @@
           sel.addEventListener('change', () => {
             submitBtn.disabled = (sel.value === '');
             if (err.textContent) err.textContent = '';
+            sel.setAttribute('aria-invalid', 'false');
           });
         } else {
-          // Free-text input
+          const existing = document.getElementById('answerSelect');
+          if (existing) existing.remove();
           textInput.style.display = '';
+          textInput.disabled = false;
+          textInput.required = true;
           textInput.placeholder = 'Type your answer…';
           currentAnswerEl = textInput;
-          // hint.textContent = 'Type an answer (not case sensitive for exact checks).';
+          hint.textContent = 'Type an answer (not case sensitive).';
 
           textInput.addEventListener('input', () => {
             submitBtn.disabled = textInput.value.trim().length === 0;
             if (err.textContent) err.textContent = '';
+            textInput.setAttribute('aria-invalid', 'false');
           }, { once: true });
         }
       }
@@ -246,52 +282,67 @@
       }
 
       function isAnswerAccepted(q, answerRaw) {
-        const val = (answerRaw || '').trim();
-        if (!val) return false; // require non-empty
-        // If acceptedAnswers is empty OR global requireCorrect is false, accept any non-empty
-        const list = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : [];
-        if (list.length === 0 || !requireCorrectGlobal) return true;
-        return list.map(s => String(s).trim().toLowerCase()).includes(val.toLowerCase());
+        const val = norm(answerRaw || '');
+        if (!val) return false; // non-empty required
+        const list = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers.map(norm) : [];
+        if (list.length === 0 || !requireCorrectGlobal) return true; // accept any non-empty
+        return list.includes(val);
       }
 
-      // Initialize
+      // Init
       populateQuestions();
 
-      // Respond to question change
       questionSelect.addEventListener('change', () => {
-        const q = getCurrentQuestion();
-        renderAnswerField(q);
+        renderAnswerField(getCurrentQuestion());
       });
 
-      // Handle submit
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const q = getCurrentQuestion();
-        const answer = (currentAnswerEl.tagName.toLowerCase() === 'select')
-          ? currentAnswerEl.value
-          : currentAnswerEl.value;
+        const answer = (currentAnswerEl.tagName.toLowerCase() === 'select') ? currentAnswerEl.value : currentAnswerEl.value;
 
         if (!isAnswerAccepted(q, answer)) {
-          err.textContent = 'That doesn\'t look right. Try again!';
+          err.textContent = "That doesn't look right. Try again!";
           currentAnswerEl.setAttribute('aria-invalid', 'true');
           return;
         }
 
-        // Reveal the invite image
-        img.src = inviteSrc;
-        img.alt = inviteAlt;
+        // Reveal invite (image or PDF)
+        // Clear any previous PDF embed
+        const oldPDF = document.getElementById('invitePDF');
+        if (oldPDF) oldPDF.remove();
+
+        if (isPDF(inviteSrc)) {
+          img.style.display = 'none';
+          const pdf = document.createElement('embed');
+          pdf.id = 'invitePDF';
+          pdf.type = 'application/pdf';
+          pdf.style.width = '100%';
+          pdf.style.height = '560px';
+          pdf.src = inviteSrc;
+          content.appendChild(pdf);
+          const hintP = document.createElement('p');
+          hintP.className = 'hint';
+          hintP.style.marginTop = '8px';
+          hintP.innerHTML = 'If the PDF doesn\'t appear, <a href="' + inviteSrc + '" target="_blank" rel="noopener">open it in a new tab</a>.';
+          content.appendChild(hintP);
+        } else {
+          img.style.display = '';
+          img.src = inviteSrc;
+          img.alt = inviteAlt;
+        }
+
         reveal.classList.add('show');
         form.style.display = 'none';
       });
 
-      // Footer buttons
       resetBtn.addEventListener('click', () => {
-        // Reset UI to ask again
         form.reset();
-        // Remove any injected select and restore text input
         const sel = document.getElementById('answerSelect');
         if (sel) sel.remove();
         textInput.style.display = '';
+        textInput.disabled = false;
+        textInput.required = true;
         textInput.value = '';
         submitBtn.disabled = true;
         err.textContent = '';
@@ -299,20 +350,24 @@
         reveal.classList.remove('show');
         img.removeAttribute('src');
         img.removeAttribute('alt');
+        const oldPDF = document.getElementById('invitePDF');
+        if (oldPDF) oldPDF.remove();
         populateQuestions();
         questionSelect.focus();
       });
 
-      copyBtn.addEventListener('click', async () => {
-        try {
-          if (!inviteSrc) return;
-          await navigator.clipboard.writeText(inviteSrc);
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => (copyBtn.textContent = 'Copy invite link'), 1400);
-        } catch (e) {
-          alert('Could not copy automatically. Long‑press or right‑click the image to copy the link.');
-        }
-      });
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            if (!inviteSrc) return;
+            await navigator.clipboard.writeText(inviteSrc);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => (copyBtn.textContent = 'Copy invite link'), 1400);
+          } catch (e) {
+            alert('Could not copy automatically. Long‑press or right‑click the image to copy the link.');
+          }
+        });
+      }
     })();
   </script>
 </body>
