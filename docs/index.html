@@ -146,7 +146,6 @@
           <img id="inviteImg" src="" alt="" loading="lazy" width="1280" height="720" />
         </div>
       </div>
-      <div class="notice">Pro tip: Right‑click → “Save Image As…” to keep a copy, or replace the image URL in the HTML with your own invite graphic.</div>
     </section>
 
     <div class="footer">
@@ -302,7 +301,7 @@
         const answer = (currentAnswerEl.tagName.toLowerCase() === 'select') ? currentAnswerEl.value : currentAnswerEl.value;
 
         if (!isAnswerAccepted(q, answer)) {
-          err.textContent = "That doesn't look right. Try again!";
+          err.textContent = "That doesn't look right.";
           currentAnswerEl.setAttribute('aria-invalid', 'true');
           return;
         }
