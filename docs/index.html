@@ -91,7 +91,7 @@
   <main class="card" aria-labelledby="title">
     <div class="header">
       <div class="dot" aria-hidden="true"></div>
-      <h1 id="title" class="title">Do you know Kian?</h1>
+      <h1 id="title" class="title">Who is Kian?</h1>
     </div>
 
     <!--
@@ -132,7 +132,6 @@
 
     <div class="footer">
       <button type="button" class="link-btn" id="resetBtn" aria-label="Reset and answer again">Reset</button>
-      <button type="button" class="link-btn" id="copyLinkBtn" aria-label="Copy invite image link">Copy invite link</button>
     </div>
   </main>
 
@@ -143,10 +142,13 @@
       // acceptedAnswers: [] means any non-empty answer is accepted
       // For 'select', define options: ['A','B','C'] and (optionally) acceptedAnswers to restrict correct ones
       const QUESTIONS = [
-        { id: 'q1', label: 'What is Kian\'s last name?', type: 'text', acceptedAnswers: ['pu','Pu','PU'] },
-        { id: 'q2', label: 'What sports has Kian been playing for the last 6 months?', type: 'text', acceptedAnswers: ['Soccer','soccer','SOCCCER'] },
+        { id: 'q1', label: 'What is Kian\'s real name (First name)?', type: 'text', acceptedAnswers: ['Jiankun'] },
         { id: 'q3', label: 'Who is Kian\'s PI?', type: 'select', type: 'text', acceptedAnswers: ['Venkat','Venkat Viswanathan','Prof. Venkat Viswanathan'] },
-        { id: 'q4', label: 'What is Kian\'s go-to phrase?', type: 'text', acceptedAnswers: ['Let\'s go','LET\'S GO','Letgo','Let\'s Go'] }
+        { id: 'q2', label: 'What sports has Kian been playing for the last 6 months?', type: 'text', acceptedAnswers: ['Soccer','soccer','SOCCCER'] },
+        { id: 'q4', label: 'What is Kian\'s go-to phrase?', type: 'text', acceptedAnswers: ['Let\'s go','LET\'S GO','Letgo','Let\'s Go'] },
+        { id: 'q5', label: 'What is Kian\'s favorite type of beer?', type: 'select', options: ['IPA','Stout','Lager','Pilsner','Wheat Beer'], acceptedAnswers: ['Lager'] },
+        { id: 'q6', label: 'What is Kian\'s favorite food?', type: 'select', options: ['Burger','Mapo Tofu','Pad Thai','Pho','Pasta'], acceptedAnswers: ['Burger'] },
+
       ];
 
       const form = document.getElementById('qa-form');
@@ -229,7 +231,7 @@
           textInput.style.display = '';
           textInput.placeholder = 'Type your answer…';
           currentAnswerEl = textInput;
-          hint.textContent = 'Type an answer (not case sensitive for exact checks).';
+          // hint.textContent = 'Type an answer (not case sensitive for exact checks).';
 
           textInput.addEventListener('input', () => {
             submitBtn.disabled = textInput.value.trim().length === 0;
