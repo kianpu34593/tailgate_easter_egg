@@ -91,7 +91,7 @@
   <main class="card" aria-labelledby="title">
     <div class="header">
       <div class="dot" aria-hidden="true"></div>
-      <h1 id="title" class="title">Quick Question → Unlock Invite</h1>
+      <h1 id="title" class="title">Do you know Kian?</h1>
     </div>
 
     <!--
@@ -103,17 +103,21 @@
     -->
 
     <form id="qa-form"
-          data-require-correct="false"
-          data-correct-answer="blue"
+          data-require-correct="true"
           data-invite-src="img/invitation.pdf"
-          data-invite-alt="Event invite with gradient background and confetti">
+          data-invite-alt="Event invite">
 
-      <label for="answer">What is your answer?</label>
+      <label for="questionSelect">Choose one question to answer</label>
       <div class="row">
+        <select id="questionSelect" name="question" aria-describedby="hint"></select>
+      </div>
+
+      <div id="answerWrap" class="row" style="margin-top:8px;">
         <input id="answer" name="answer" type="text" placeholder="Type your answer…" autocomplete="off" required aria-describedby="hint" />
         <button id="submitBtn" type="submit" disabled>Submit</button>
       </div>
-      <div id="hint" class="hint">Tip: Change settings in the HTML if you want to require a specific answer.</div>
+
+      <div id="hint" class="hint">Pick a question from the dropdown, answer it, and the easter egg will appear.</div>
       <div id="err" class="err" role="alert" aria-live="polite"></div>
     </form>
 
@@ -124,7 +128,6 @@
           <img id="inviteImg" src="" alt="" loading="lazy" width="1280" height="720" />
         </div>
       </div>
-      <div class="notice">Pro tip: Right‑click → “Save Image As…” to keep a copy, or replace the image URL in the HTML with your own invite graphic.</div>
     </section>
 
     <div class="footer">
@@ -135,60 +138,167 @@
 
   <script>
     (function () {
+      // ===== Configurable questions =====
+      // type: 'text' (free text) or 'select' (dropdown answers)
+      // acceptedAnswers: [] means any non-empty answer is accepted
+      // For 'select', define options: ['A','B','C'] and (optionally) acceptedAnswers to restrict correct ones
+      const QUESTIONS = [
+        { id: 'q1', label: 'What is Kian\'s last name?', type: 'text', acceptedAnswers: ['pu','Pu','PU'] },
+        { id: 'q2', label: 'What sports has Kian been playing for the last 6 months?', type: 'text', acceptedAnswers: ['Soccer','soccer','SOCCCER'] },
+        { id: 'q3', label: 'Who is Kian\'s PI?', type: 'select', type: 'text', acceptedAnswers: ['Venkat','Venkat Viswanathan','Prof. Venkat Viswanathan'] },
+        { id: 'q4', label: 'What is Kian\'s go-to phrase?', type: 'text', acceptedAnswers: ['Let\'s go','LET\'S GO','Letgo','Let\'s Go'] }
+      ];
+
       const form = document.getElementById('qa-form');
-      const input = document.getElementById('answer');
-      const btn = document.getElementById('submitBtn');
+      const requireCorrectGlobal = (form.dataset.requireCorrect || 'true').toLowerCase() === 'true';
+      const inviteSrc = form.dataset.inviteSrc || '';
+      const inviteAlt = form.dataset.inviteAlt || 'Invite image';
+
+      const questionSelect = document.getElementById('questionSelect');
+      const answerWrap = document.getElementById('answerWrap');
+      const textInput = document.getElementById('answer');
+      const submitBtn = document.getElementById('submitBtn');
       const err = document.getElementById('err');
+      const hint = document.getElementById('hint');
       const reveal = document.getElementById('reveal');
       const img = document.getElementById('inviteImg');
       const resetBtn = document.getElementById('resetBtn');
       const copyBtn = document.getElementById('copyLinkBtn');
 
-      // Config via data-* attributes
-      const requireCorrect = (form.dataset.requireCorrect || 'false').toLowerCase() === 'true';
-      const correctAnswer = (form.dataset.correctAnswer || '').trim().toLowerCase();
-      const inviteSrc = form.dataset.inviteSrc || '';
-      const inviteAlt = form.dataset.inviteAlt || 'Invite image';
+      // Runtime state
+      let currentAnswerEl = textInput; // can be input or a generated select
 
-      // Enable button only when there's input
-      input.addEventListener('input', () => {
-        btn.disabled = input.value.trim().length === 0;
-        if (err.textContent) err.textContent = '';
+      // Populate question dropdown
+      function populateQuestions() {
+        questionSelect.innerHTML = '';
+        QUESTIONS.forEach((q, idx) => {
+          const opt = document.createElement('option');
+          opt.value = q.id;
+          opt.textContent = q.label;
+          if (idx === 0) opt.selected = true;
+          questionSelect.appendChild(opt);
+        });
+        renderAnswerField(QUESTIONS[0]);
+      }
+
+      function clearAnswerField() {
+        if (currentAnswerEl && currentAnswerEl !== textInput) {
+          // remove any injected select
+          currentAnswerEl.remove();
+          currentAnswerEl = textInput;
+        }
+        textInput.value = '';
+        submitBtn.disabled = true;
+      }
+
+      function renderAnswerField(q) {
+        clearAnswerField();
+        err.textContent = '';
+        textInput.setAttribute('aria-invalid', 'false');
+
+        if (q.type === 'select') {
+          // Create/select element with options
+          const sel = document.createElement('select');
+          sel.id = 'answerSelect';
+          sel.setAttribute('aria-describedby', 'hint');
+          sel.required = true;
+          // Placeholder option
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = 'Choose an option…';
+          ph.disabled = true; ph.selected = true;
+          sel.appendChild(ph);
+          (q.options || []).forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = String(o);
+            opt.textContent = String(o);
+            sel.appendChild(opt);
+          });
+          // Swap into the UI (replace text input)
+          answerWrap.insertBefore(sel, submitBtn);
+          textInput.style.display = 'none';
+          currentAnswerEl = sel;
+          hint.textContent = 'Pick one option to continue.';
+
+          sel.addEventListener('change', () => {
+            submitBtn.disabled = (sel.value === '');
+            if (err.textContent) err.textContent = '';
+          });
+        } else {
+          // Free-text input
+          textInput.style.display = '';
+          textInput.placeholder = 'Type your answer…';
+          currentAnswerEl = textInput;
+          hint.textContent = 'Type an answer (not case sensitive for exact checks).';
+
+          textInput.addEventListener('input', () => {
+            submitBtn.disabled = textInput.value.trim().length === 0;
+            if (err.textContent) err.textContent = '';
+          }, { once: true });
+        }
+      }
+
+      function getCurrentQuestion() {
+        const id = questionSelect.value;
+        return QUESTIONS.find(q => q.id === id) || QUESTIONS[0];
+      }
+
+      function isAnswerAccepted(q, answerRaw) {
+        const val = (answerRaw || '').trim();
+        if (!val) return false; // require non-empty
+        // If acceptedAnswers is empty OR global requireCorrect is false, accept any non-empty
+        const list = Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : [];
+        if (list.length === 0 || !requireCorrectGlobal) return true;
+        return list.map(s => String(s).trim().toLowerCase()).includes(val.toLowerCase());
+      }
+
+      // Initialize
+      populateQuestions();
+
+      // Respond to question change
+      questionSelect.addEventListener('change', () => {
+        const q = getCurrentQuestion();
+        renderAnswerField(q);
       });
 
+      // Handle submit
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const val = input.value.trim();
-        if (!val) return;
+        const q = getCurrentQuestion();
+        const answer = (currentAnswerEl.tagName.toLowerCase() === 'select')
+          ? currentAnswerEl.value
+          : currentAnswerEl.value;
 
-        if (requireCorrect) {
-          if (val.toLowerCase() !== correctAnswer) {
-            err.textContent = 'That doesn\'t look right. Try again!';
-            input.setAttribute('aria-invalid', 'true');
-            return;
-          }
+        if (!isAnswerAccepted(q, answer)) {
+          err.textContent = 'That doesn\'t look right. Try again!';
+          currentAnswerEl.setAttribute('aria-invalid', 'true');
+          return;
         }
 
         // Reveal the invite image
         img.src = inviteSrc;
         img.alt = inviteAlt;
         reveal.classList.add('show');
-
-        // Optionally hide the form after success
         form.style.display = 'none';
       });
 
+      // Footer buttons
       resetBtn.addEventListener('click', () => {
         // Reset UI to ask again
         form.reset();
-        btn.disabled = true;
-        input.removeAttribute('aria-invalid');
+        // Remove any injected select and restore text input
+        const sel = document.getElementById('answerSelect');
+        if (sel) sel.remove();
+        textInput.style.display = '';
+        textInput.value = '';
+        submitBtn.disabled = true;
         err.textContent = '';
         form.style.display = '';
         reveal.classList.remove('show');
         img.removeAttribute('src');
         img.removeAttribute('alt');
-        input.focus();
+        populateQuestions();
+        questionSelect.focus();
       });
 
       copyBtn.addEventListener('click', async () => {
